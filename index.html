@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桌签制作工具 (辉呀辉 V3.0)</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 jsPDF (用于生成PDF) 和 JSZip (用于生成ZIP) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- 引入SheetJS (用于解析Excel和CSV) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        /* 基础样式 */
+        body {
+            font-family: "Inter", "Microsoft YaHei", sans-serif;
+        }
+        /* 卡片阴影和过渡 */
+        .card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease-in-out;
+        }
+        /* 按钮样式 */
+        .btn {
+            @apply px-4 py-2 rounded-lg font-semibold text-white shadow-md transition-all duration-300;
+        }
+        .btn-primary {
+            @apply bg-blue-600 hover:bg-blue-700;
+        }
+        .btn-secondary {
+            @apply bg-green-600 hover:bg-green-700;
+        }
+        .btn-disabled {
+            @apply bg-gray-400 cursor-not-allowed;
+        }
+        /* 预览画布的十字准星，帮助定位 */
+        #bg-preview-canvas {
+            cursor: crosshair;
+        }
+        /* V5.3: 模式选择时高亮/改变颜色 (已加强样式) */
+        input[type="radio"]:checked + label {
+            @apply bg-blue-100 border-blue-600 ring-2 ring-blue-600 shadow-lg;
+        }
+        
+        /* V3.0: 单独下载按钮样式 */
+        .download-single-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 18px;
+            line-height: 32px;
+            text-align: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .card-preview-wrapper:hover .download-single-btn {
+            opacity: 1;
+        }
+
+        /* Modal Backdrop */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        
+        /* 广告位样式 */
+        .ad-slot {
+            @apply block p-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-[1.01] hover:shadow-xl;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow-2xl">
+        
+        <!-- ====== 广告位区域 (新增) ====== -->
+        <div class="mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- 广告位 1: 使用 a 标签实现可点击跳转 -->
+                <!-- target="_blank" 确保在新标签页打开 -->
+                <a href="https://www.google.com/search?q=赞助商链接" target="_blank" class="ad-slot bg-gradient-to-r from-blue-500 to-blue-600 text-white flex items-center justify-center font-bold text-center h-20">
+                    <span class="text-base sm:text-lg">广告位 A：还没想好放啥</span>
+                </a>
+                <!-- 广告位 2 -->
+                <a href="https://www.google.com/search?q=限时优惠" target="_blank" class="ad-slot bg-gradient-to-r from-green-500 to-green-600 text-white flex items-center justify-center font-bold text-center h-20">
+                    <span class="text-base sm:text-lg">广告位 B：还没想好放啥</span>
+                </a>
+                <!-- 广告位 3 -->
+                <a href="https://www.google.com/search?q=新功能预告" target="_blank" class="ad-slot bg-gradient-to-r from-yellow-500 to-yellow-600 text-white flex items-center justify-center font-bold text-center h-20">
+                    <span class="text-base sm:text-lg">广告位 C：新功能预告</span>
+                </a>
+            </div>
+        </div>
+        <!-- ================================== -->
+
+        <header class="border-b-2 border-gray-200 pb-4 mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">桌签制作工具 (辉呀辉 V3.0)</h1>
+            <p class="text-gray-600 mt-2">*注：如遇使用困难或有其他新的想法可以联系微信：withzhzhzh</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:col-cols-3 gap-8">
+            
+            <!-- ====== 左侧：设置区域 (宽度调整) ====== -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- 步骤1: 上传背景 -->
+                <div class="card p-5 rounded-lg">
+                    <label class="font-bold text-lg text-gray-700">步骤 1: 上传背景图</label>
+                    <p class="text-sm text-gray-500 mb-3">
+                        <b>单张模式:</b> 上传任意尺寸卡片。<br>
+                        <b>A4三折模式:</b> 请上传 <b>"单半张"</b> 卡片背景 (建议 21x9.9cm 比例)。
+                    </p>
+                    <div class="flex items-center space-x-2">
+                        <input type="file" id="bg-upload" accept="image/*" class="flex-grow text-sm text-gray-500
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-full file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-blue-50 file:text-blue-700
+                            hover:file:bg-blue-100">
+                        <!-- V5.3: 清除背景图按钮 -->
+                        <button id="clear-bg-btn" class="btn bg-red-500 hover:bg-red-600 text-sm p-2 w-10 h-10 flex items-center justify-center disabled:bg-gray-400" title="清除已选择文件" disabled>
+                            &times;
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 步骤2: 生成模式 (新增示意图按钮) -->
+                <div class="card p-5 rounded-lg">
+                    <label class="font-bold text-lg text-gray-700">步骤 2: 选择生成模式</label>
+                    <div class="mt-3 space-y-3">
+                        <div class="relative flex justify-between items-center">
+                            <input type="radio" id="mode-single" name="generation-mode" value="single" class="hidden" checked>
+                            <!-- V5.3: Label自带高亮逻辑 -->
+                            <label for="mode-single" class="flex flex-col p-4 border rounded-lg cursor-pointer transition-all hover:bg-gray-50 w-full mr-2">
+                                <span class="font-semibold text-gray-800">单张模式</span>
+                                <span class="text-sm text-gray-500 mt-1">按原图尺寸生成 (单张席卡或椅背贴)。</span>
+                            </label>
+                            <button id="schematic-single-btn" class="flex-shrink-0 btn bg-gray-500 hover:bg-gray-600 w-10 h-10 p-0 text-lg" title="查看单张模式示意图">
+                                i
+                            </button>
+                        </div>
+                        <div class="relative flex justify-between items-center">
+                            <input type="radio" id="mode-symmetric" name="generation-mode" value="symmetric" class="hidden">
+                            <!-- V5.3: Label自带高亮逻辑 -->
+                            <label for="mode-symmetric" class="flex flex-col p-4 border rounded-lg cursor-pointer transition-all hover:bg-gray-50 w-full mr-2">
+                                <span class="font-semibold text-gray-800">A4三折模式</span>
+                                <span class="text-sm text-gray-500 mt-1">只需要上传 "单半张" 背景组合成A4页面（尺寸为21cmWX9.9cmH）。</span>
+                            </label>
+                            <button id="schematic-symmetric-btn" class="flex-shrink-0 btn bg-gray-500 hover:bg-gray-600 w-10 h-10 p-0 text-lg" title="查看A4三折模式示意图">
+                                i
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步骤3: 输入名单 (新增文件上传功能) -->
+                <div class="card p-5 rounded-lg">
+                    <label class="font-bold text-lg text-gray-700">步骤 3: 输入名单</label>
+                    <p class="text-sm text-gray-500 mb-3">如需要增加title，请确保姓名和职称每行一一对应。</p>
+                    
+                    <!-- 新增文件上传功能 -->
+                    <div class="mb-4">
+                        <label for="list-upload" class="text-sm font-medium">或从文件上传名单 (.xlsx, .xls, .csv)</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="file" id="list-upload" accept=".xlsx,.xls,.csv" class="flex-grow text-sm text-gray-500
+                                file:mr-4 file:py-2 file:px-4
+                                file:rounded-full file:border-0
+                                file:text-sm file:font-semibold
+                                file:bg-green-50 file:text-green-700
+                                hover:file:bg-green-100 mt-1">
+                            <!-- V5.3: 清除名单文件按钮 -->
+                            <button id="clear-list-btn" class="btn bg-red-500 hover:bg-red-600 text-sm p-2 w-10 h-10 flex items-center justify-center disabled:bg-gray-400" title="清除已上传名单" disabled>
+                                &times;
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">注意：Word文件 (.docx) 结构复杂，暂不支持浏览器端直接解析。请转为Excel或CSV格式。</p>
+                    </div>
+
+                    <div>
+                        <label for="name-list" class="text-sm font-medium">姓名名单</label>
+                        <textarea id="name-list" rows="6" class="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="张三&#10;李四&#10;王五&#10;..."></textarea>
+                    </div>
+                    <div class="mt-4">
+                        <label for="title-list" class="text-sm font-medium">职称名单 (可留空)</label>
+                        <textarea id="title-list" rows="6" class="w-full mt-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="CEO&#10;市场部经理&#10;设计师&#10;..."></textarea>
+                    </div>
+                </div>
+
+                <!-- 步骤4: 姓名设置 -->
+                <div class="card p-5 rounded-lg">
+                    <label class="font-bold text-lg text-gray-700">步骤 4: 姓名设置</label>
+                    <p class="text-sm text-gray-500 mb-3">坐标基于您上传的 "单半张" 卡片。</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="font-size" class="text-sm font-medium">字号 (px)</label>
+                            <input type="number" id="font-size" value="300" class="w-full mt-1 p-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label for="font-color" class="text-sm font-medium">颜色</label>
+                            <input type="color" id="font-color" value="#000000" class="w-full h-10 mt-1 p-1 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label for="pos-x" class="text-sm font-medium">X 坐标</label>
+                            <input type="number" id="pos-x" value="500" class="w-full mt-1 p-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label for="pos-y" class="text-sm font-medium">Y 坐标</label>
+                            <input type="number" id="pos-y" value="300" class="w-full mt-1 p-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label for="font-family" class="text-sm font-medium">字体（可自行输入字体名称）</label>
+                        <input type="text" id="font-family" value="SimHei, 'Microsoft YaHei', sans-serif" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" placeholder="例如: SimHei, sans-serif">
+                    </div>
+                </div>
+
+                <!-- 步骤5: 职称设置 -->
+                <div class="card p-5 rounded-lg">
+                    <label class="font-bold text-lg text-gray-700">步骤 5: 职称设置</label>
+                    <p class="text-sm text-gray-500 mb-3">坐标基于您上传的 "单半张" 卡片。</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="title-font-size" class="text-sm font-medium">字号（如无需职场可设置为0） (px)</label>
+                            <input type="number" id="title-font-size" value="80" class="w-full mt-1 p-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label for="title-font-color" class="text-sm font-medium">颜色</label>
+                            <input type="color" id="title-font-color" value="#333333" class="w-full h-10 mt-1 p-1 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label for="title-pos-x" class="text-sm font-medium">X 坐标</label>
+                            <input type="number" id="title-pos-x" value="500" class="w-full mt-1 p-2 border border-gray-300 rounded-lg">
+                        </div>
+                        <div>
+                            <label for="title-pos-y" class="text-sm font-medium">Y 坐标</label>
+                            <input type="number" id="title-pos-y" value="400" class="w-full mt-1 p-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label for="title-font-family" class="text-sm font-medium">字体</label>
+                        <input type="text" id="title-font-family" value="SimHei, 'Microsoft YaHei', sans-serif" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" placeholder="例如: SimHei, sans-serif">
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ====== 右侧：预览与生成 (宽度调整) ====== -->
+            <div class="lg:col-span-2 space-y-6">
+
+                <!-- 实时定位预览 -->
+                <div class="card p-5 rounded-lg">
+                    <h3 class="font-bold text-lg text-gray-700 mb-3">实时定位预览</h3>
+                    <div id="bg-preview-wrapper" class="border-2 border-dashed border-gray-300 rounded-lg p-2 bg-gray-50 overflow-hidden">
+                        <!-- Canvas 默认尺寸将在 JS 中设置 -->
+                        <canvas id="bg-preview-canvas" class="w-full h-auto rounded-md"></canvas>
+                    </div>
+                    <p id="canvas-tip" class="text-sm text-gray-500 mt-2 hidden">提示: "A4三折模式"下, 请点击 <b>中间的卡片</b> 来定位。</p>
+                </div>
+                
+                <!-- 步骤6: 生成与下载 -->
+                <div class="card p-5 rounded-lg">
+                    <h3 class="font-bold text-lg text-gray-700">步骤 6: 生成与下载</h3>
+                    <div class="flex flex-wrap gap-4 mt-4">
+                        <button id="generate-btn" class="btn btn-primary" disabled>点击生成预览</button>
+                        <!-- 文本已更新为 JPG -->
+                        <button id="download-zip-btn" class="btn btn-secondary btn-disabled" disabled>批量下载JPG (ZIP)</button>
+                        <button id="download-pdf-btn" class="btn btn-secondary btn-disabled" disabled>批量下载PDF</button>
+                    </div>
+                    <p id="status-msg" class="text-blue-600 font-semibold mt-4 h-6"></p>
+                </div>
+
+                <!-- 最终预览区 -->
+                <div class="card p-5 rounded-lg">
+                    <h3 class="font-bold text-lg text-gray-700 mb-3">生成结果预览 (最多显示12个)</h3>
+                    <div id="preview-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 bg-gray-100 p-4 rounded-lg min-h-[100px]">
+                        <!-- 生成的卡片将显示在这里 -->
+                        <p id="preview-placeholder" class="text-gray-500 col-span-full text-center">点击 "生成预览" 按钮后将在此处显示结果。</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- 模式示意图 Modal 结构 -->
+    <div id="schematic-modal" class="modal-overlay hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-lg w-full mx-4 relative">
+            <button id="close-modal-btn" class="absolute top-2 right-2 text-gray-500 hover:text-gray-800 text-2xl font-bold p-2 leading-none">&times;</button>
+            <h3 id="modal-title" class="text-xl font-bold mb-4 text-gray-800">模式示意图</h3>
+            <img id="modal-image" src="" alt="模式示意图" class="w-full h-auto rounded-lg shadow-md">
+            <p id="modal-caption" class="text-sm text-gray-500 mt-3 text-center"></p>
+        </div>
+    </div>
+    
+    <script>
+        // 确保DOM加载完毕
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // === 1. 获取所有元素 ===
+            const bgUpload = document.getElementById('bg-upload');
+            const listUpload = document.getElementById('list-upload'); // V5.3: 新增的文件上传
+            const nameList = document.getElementById('name-list');
+            const titleList = document.getElementById('title-list');
+            
+            // 模式
+            const modeSingle = document.getElementById('mode-single');
+            const modeSymmetric = document.getElementById('mode-symmetric');
+
+            // 姓名设置
+            const fontSizeInput = document.getElementById('font-size');
+            const fontColorInput = document.getElementById('font-color');
+            const fontFamilyInput = document.getElementById('font-family');
+            const posXInput = document.getElementById('pos-x');
+            const posYInput = document.getElementById('pos-y');
+            
+            // 职称设置
+            const titleFontSizeInput = document.getElementById('title-font-size');
+            const titleFontColorInput = document.getElementById('title-font-color');
+            const titleFontFamilyInput = document.getElementById('title-font-family');
+            const titlePosXInput = document.getElementById('title-pos-x');
+            const titlePosYInput = document.getElementById('title-pos-y');
+
+            // 画布
+            const previewCanvas = document.getElementById('bg-preview-canvas');
+            const previewCtx = previewCanvas.getContext('2d');
+            
+            // 按钮和状态
+            const generateBtn = document.getElementById('generate-btn');
+            const downloadZipBtn = document.getElementById('download-zip-btn');
+            const downloadPdfBtn = document.getElementById('download-pdf-btn');
+            const statusMsg = document.getElementById('status-msg');
+            
+            // 预览区
+            const previewContainer = document.getElementById('preview-container');
+            const previewPlaceholder = document.getElementById('preview-placeholder');
+
+            // V5.3: 新增的清除按钮
+            const clearBgBtn = document.getElementById('clear-bg-btn');
+            const clearListBtn = document.getElementById('clear-list-btn');
+
+            // V5.3 修复: 示意图 Modal 元素获取
+            const schematicSingleBtn = document.getElementById('schematic-single-btn');
+            const schematicSymmetricBtn = document.getElementById('schematic-symmetric-btn');
+            const schematicModal = document.getElementById('schematic-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const modalTitle = document.getElementById('modal-title');
+            const modalImage = document.getElementById('modal-image');
+            const modalCaption = document.getElementById('modal-caption');
+
+            // V4.0: 定义A4比例 (基于 210 x 297 mm)
+            const A4_PIXEL_WIDTH = 2100;
+            const A4_PIXEL_SLOT_HEIGHT = 990; // 9.9cm
+            const A4_PIXEL_HEIGHT = 2970; // 29.7cm
+
+            // V5.0: 定义输出格式常量
+            const IMAGE_MIME_TYPE = 'image/jpeg';
+            const IMAGE_EXTENSION = '.jpg';
+
+
+            // 全局变量
+            let bgImage = null; // 存储背景图的Image对象
+            let generatedData = []; // 存储 {name, title, canvas}
+
+            // V5.1: 设置初始 Canvas 尺寸以便显示引导信息
+            function setInitialCanvasSize() {
+                // 默认使用父容器宽度，高度固定 300px
+                previewCanvas.width = previewCanvas.parentElement.clientWidth;
+                previewCanvas.height = 300;
+            }
+            setInitialCanvasSize();
+
+
+            // === 2. 背景图处理 (更新了文件上传和清除逻辑) ===
+            bgUpload.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) {
+                    clearBgBtn.disabled = true;
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    bgImage = new Image();
+                    bgImage.onload = () => {
+                        // V4.0: 重置画布和坐标
+                        resizeCanvasAndRedraw();
+                        
+                        // 启用生成按钮
+                        generateBtn.disabled = false;
+                        generateBtn.classList.remove('btn-disabled');
+                        generateBtn.classList.add('btn-primary');
+                        statusMsg.textContent = '背景图已加载，请调整设置。';
+                        document.getElementById('canvas-tip').style.display = 'block';
+                        clearBgBtn.disabled = false; // V5.3: 启用清除按钮
+                    };
+                    bgImage.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // V5.3: 清除背景图文件
+            clearBgBtn.addEventListener('click', () => {
+                bgUpload.value = ''; // 清除文件输入框
+                bgImage = null; // 清除图片对象
+                clearBgBtn.disabled = true; // 禁用清除按钮
+                
+                // 重置画布和按钮状态
+                setInitialCanvasSize();
+                drawPreviewWithText(); // 绘制引导信息
+                
+                generateBtn.disabled = true;
+                generateBtn.classList.remove('btn-primary');
+                generateBtn.classList.add('btn-disabled');
+
+                downloadZipBtn.disabled = true;
+                downloadPdfBtn.disabled = true;
+                downloadZipBtn.classList.remove('btn-secondary');
+                downloadZipBtn.classList.add('btn-disabled');
+                downloadPdfBtn.classList.remove('btn-secondary');
+                downloadPdfBtn.classList.add('btn-disabled');
+                
+                statusMsg.textContent = '背景图已清除。';
+                document.getElementById('canvas-tip').style.display = 'none';
+            });
+
+            // V4.0: 新增函数，用于在切换模式或加载图像时重置画布
+            function resizeCanvasAndRedraw() {
+                // V5.1: 如果没有图片，仍然调用 drawPreviewWithText 来显示引导
+                if (!bgImage) {
+                    drawPreviewWithText();
+                    return; 
+                }
+                
+                const mode = document.querySelector('input[name="generation-mode"]:checked').value;
+                
+                if (mode === 'symmetric') {
+                    // A4三折模式: 画布固定为A4比例
+                    previewCanvas.width = A4_PIXEL_WIDTH;
+                    previewCanvas.height = A4_PIXEL_HEIGHT;
+                    
+                    // 坐标基于 "单卡" (即中间区域)
+                    posXInput.value = Math.round(A4_PIXEL_WIDTH / 2);
+                    posYInput.value = Math.round(A4_PIXEL_SLOT_HEIGHT / 2);
+                    titlePosXInput.value = Math.round(A4_PIXEL_WIDTH / 2);
+                    titlePosYInput.value = Math.round(A4_PIXEL_SLOT_HEIGHT / 2 + 150);
+                    
+                } else {
+                    // 单张模式: 画布与原图一致
+                    previewCanvas.width = bgImage.width;
+                    previewCanvas.height = bgImage.height;
+                    
+                    // 坐标基于原图
+                    posXInput.value = Math.round(bgImage.width / 2);
+                    posYInput.value = Math.round(bgImage.height / 2);
+                    titlePosXInput.value = Math.round(bgImage.width / 2);
+                    titlePosYInput.value = Math.round(bgImage.height / 2 + (bgImage.height * 0.1));
+                }
+                
+                drawPreviewWithText();
+            }
+
+            // V4.0: 监听模式切换
+            modeSingle.addEventListener('change', resizeCanvasAndRedraw);
+            modeSymmetric.addEventListener('change', resizeCanvasAndRedraw);
+
+
+            // === 3. 实时预览 ===
+
+            // 获取当前所有设置
+            function getSettings() {
+                return {
+                    mode: document.querySelector('input[name="generation-mode"]:checked').value,
+                    name: {
+                        size: parseInt(fontSizeInput.value, 10),
+                        color: fontColorInput.value,
+                        family: fontFamilyInput.value,
+                        x: parseInt(posXInput.value, 10), // V4.0: x 坐标
+                        y: parseInt(posYInput.value, 10), // V4.0: y 坐标
+                        font: `${parseInt(fontSizeInput.value, 10)}px ${fontFamilyInput.value}`
+                    },
+                    title: {
+                        size: parseInt(titleFontSizeInput.value, 10),
+                        color: titleFontColorInput.value,
+                        family: titleFontFamilyInput.value,
+                        x: parseInt(titlePosXInput.value, 10), // V4.0: x 坐标
+                        y: parseInt(titlePosYInput.value, 10), // V4.0: y 坐标
+                        font: `${parseInt(titleFontSizeInput.value, 10)}px ${titleFontFamilyInput.value}`
+                    }
+                };
+            }
+            
+            // 绘制预览 (核心函数 V5.1 优化了引导信息)
+            function drawPreviewWithText() {
+                // 1. 清空画布
+                previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+
+                if (!bgImage) {
+                    // V5.1: 如果没有图片，显示引导信息
+                    setInitialCanvasSize(); // 确保尺寸正确
+                    
+                    previewCtx.fillStyle = '#6b7280'; // 灰色
+                    previewCtx.font = '24px Inter, "Microsoft YaHei", sans-serif';
+                    previewCtx.textAlign = 'center';
+                    previewCtx.textBaseline = 'middle';
+                    previewCtx.fillText('↑ 步骤 1: 请上传背景图以启用预览', previewCanvas.width / 2, previewCanvas.height / 2);
+                    return;
+                }
+
+                // 2. 获取设置
+                const settings = getSettings();
+                const firstName = nameList.value.split('\n')[0] || "示例姓名";
+                const firstTitle = titleList.value.split('\n')[0] || "示例职称";
+
+                if (settings.mode === 'symmetric') {
+                    // === A4三折模式 (组装) ===
+
+                    // V5.2: 填充整个A4画布为白色底色 (确保最下面的折叠区是白色)
+                    previewCtx.fillStyle = '#FFFFFF';
+                    previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+
+                    // 1. 绘制顶部 (镜像) 背景
+                    previewCtx.save();
+                    previewCtx.translate(A4_PIXEL_WIDTH / 2, A4_PIXEL_SLOT_HEIGHT / 2); // 移到顶部插槽中心
+                    previewCtx.rotate(Math.PI); // 旋转180度
+                    // 将(21x9.9)的背景图拉伸绘制到(2100x990)的插槽中
+                    previewCtx.drawImage(bgImage, -A4_PIXEL_WIDTH / 2, -A4_PIXEL_SLOT_HEIGHT / 2, A4_PIXEL_WIDTH, A4_PIXEL_SLOT_HEIGHT);
+                    previewCtx.restore();
+                    
+                    // 2. 绘制中间 (正向) 背景
+                    // 将(21x9.9)的背景图拉伸绘制到(2100x990)的插槽中
+                    previewCtx.drawImage(bgImage, 0, A4_PIXEL_SLOT_HEIGHT, A4_PIXEL_WIDTH, A4_PIXEL_SLOT_HEIGHT);
+
+                    // 3. 绘制中间 (正向) 文字
+                    // 坐标 (x, y) 是相对于 (2100x990) 插槽的，所以y要加上偏移
+                    const nameX_abs = settings.name.x;
+                    const nameY_abs = A4_PIXEL_SLOT_HEIGHT + settings.name.y;
+                    previewCtx.font = settings.name.font;
+                    previewCtx.fillStyle = settings.name.color;
+                    previewCtx.textAlign = 'center';
+                    previewCtx.textBaseline = 'middle';
+                    previewCtx.fillText(firstName, nameX_abs, nameY_abs);
+                    
+                    if (firstTitle) {
+                        const titleX_abs = settings.title.x;
+                        const titleY_abs = A4_PIXEL_SLOT_HEIGHT + settings.title.y;
+                        previewCtx.font = settings.title.font;
+                        previewCtx.fillStyle = settings.title.color;
+                        previewCtx.textAlign = 'center';
+                        previewCtx.textBaseline = 'middle';
+                        previewCtx.fillText(firstTitle, titleX_abs, titleY_abs);
+                    }
+
+                    // 4. 绘制顶部 (镜像) 文字
+                    // 计算镜像坐标 (相对于顶部插槽的 0,0 点)
+                    const mirroredNameX = A4_PIXEL_WIDTH - settings.name.x;
+                    const mirroredNameY = A4_PIXEL_SLOT_HEIGHT - settings.name.y;
+
+                    previewCtx.save();
+                    previewCtx.translate(mirroredNameX, mirroredNameY); // 移到顶部插槽中的镜像点
+                    previewCtx.rotate(Math.PI);
+                    previewCtx.font = settings.name.font;
+                    previewCtx.fillStyle = settings.name.color;
+                    previewCtx.textAlign = 'center';
+                    previewCtx.textBaseline = 'middle';
+                    previewCtx.fillText(firstName, 0, 0);
+                    previewCtx.restore();
+
+                    if (firstTitle) {
+                        const mirroredTitleX = A4_PIXEL_WIDTH - settings.title.x;
+                        const mirroredTitleY = A4_PIXEL_SLOT_HEIGHT - settings.title.y;
+                        previewCtx.save();
+                        previewCtx.translate(mirroredTitleX, mirroredTitleY);
+                        previewCtx.rotate(Math.PI);
+                        previewCtx.font = settings.title.font;
+                        previewCtx.fillStyle = settings.title.color;
+                        previewCtx.textAlign = 'center';
+                        previewCtx.textBaseline = 'middle';
+                        previewCtx.fillText(firstTitle, 0, 0);
+                        previewCtx.restore();
+                    }
+
+                } else {
+                    // === 单张模式 ===
+                    // 1. 绘制背景
+                    previewCtx.drawImage(bgImage, 0, 0, previewCanvas.width, previewCanvas.height);
+                    
+                    // 2. 绘制文字 (坐标(x,y)是相对于原图的)
+                    previewCtx.font = settings.name.font;
+                    previewCtx.fillStyle = settings.name.color;
+                    previewCtx.textAlign = 'center';
+                    previewCtx.textBaseline = 'middle';
+                    previewCtx.fillText(firstName, settings.name.x, settings.name.y);
+
+                    if (firstTitle) {
+                        previewCtx.font = settings.title.font;
+                        previewCtx.fillStyle = settings.title.color;
+                        previewCtx.textAlign = 'center';
+                        previewCtx.textBaseline = 'middle';
+                        previewCtx.fillText(firstTitle, settings.title.x, settings.title.y);
+                    }
+                }
+            }
+
+            // 监听所有设置变化，实时更新预览
+            const allInputs = [
+                // V4.0: 移除了 mode radio 的 'input' 监听, 只保留 'change'
+                nameList, titleList,
+                fontSizeInput, fontFamilyInput, posXInput, posYInput,
+                titleFontSizeInput, titleFontFamilyInput, titlePosXInput, titlePosYInput
+            ];
+            // 文本和数字输入框使用 'input'
+            allInputs.forEach(input => {
+                input.addEventListener('input', drawPreviewWithText);
+            });
+            
+            // V4.0: 模式切换(radio)和颜色选择器(color)使用 'change'
+            modeSingle.addEventListener('change', drawPreviewWithText);
+            modeSymmetric.addEventListener('change', drawPreviewWithText);
+            fontColorInput.addEventListener('change', drawPreviewWithText);
+            titleFontColorInput.addEventListener('change', drawPreviewWithText);
+
+
+            // 点击画布设置坐标 (V4.0 重大修改)
+            previewCanvas.addEventListener('click', (e) => {
+                if (!bgImage) {
+                    statusMsg.textContent = '请先上传背景图再设置坐标！';
+                    return;
+                }
+
+                const settings = getSettings();
+                const rect = previewCanvas.getBoundingClientRect();
+                // 确保使用 Canvas 的实际尺寸进行缩放计算
+                const scaleX = previewCanvas.width / rect.width;
+                const scaleY = previewCanvas.height / rect.height;
+
+                const x_abs_click = (e.clientX - rect.left) * scaleX;
+                const y_abs_click = (e.clientY - rect.top) * scaleY;
+
+                let relX, relY;
+
+                if (settings.mode === 'symmetric') {
+                    // A4模式: 只响应中间插槽的点击
+                    const midSlotTop = A4_PIXEL_SLOT_HEIGHT;
+                    const midSlotBottom = A4_PIXEL_SLOT_HEIGHT * 2;
+                    
+                    if (y_abs_click >= midSlotTop && y_abs_click <= midSlotBottom) {
+                        relX = x_abs_click;
+                        relY = y_abs_click - midSlotTop; // 转换为插槽内的相对Y坐标
+                    } else {
+                        statusMsg.textContent = '请点击中间的正向卡片区域来定位。';
+                        return; // 忽略点击
+                    }
+                } else {
+                    // 单张模式: 相对坐标就是绝对坐标
+                    relX = x_abs_click;
+                    relY = y_abs_click;
+                }
+
+                // 智能判断设置姓名还是职称
+                const nameY = parseInt(posYInput.value, 10);
+                const titleY = parseInt(titlePosYInput.value, 10);
+
+                if (!titleY || Math.abs(relY - nameY) <= Math.abs(relY - titleY)) {
+                    posXInput.value = Math.round(relX);
+                    posYInput.value = Math.round(relY);
+                } else {
+                    titlePosXInput.value = Math.round(relX);
+                    titlePosYInput.value = Math.round(relY);
+                }
+                
+                // 触发重绘
+                drawPreviewWithText();
+            });
+
+
+            // === 4. 批量生成 ===
+
+            // 异步生成单个卡片 (V4.0 重大修改)
+            async function generateCard(name, title, settings) {
+                if (!bgImage) return null;
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                if (settings.mode === 'symmetric') {
+                    // === A4三折模式 (组装) ===
+                    canvas.width = A4_PIXEL_WIDTH;
+                    canvas.height = A4_PIXEL_HEIGHT;
+
+                    // V5.2: 填充整个A4画布为白色底色 (确保最下面的折叠区是白色)
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // 1. 顶部 (镜像) 背景
+                    ctx.save();
+                    ctx.translate(A4_PIXEL_WIDTH / 2, A4_PIXEL_SLOT_HEIGHT / 2);
+                    ctx.rotate(Math.PI);
+                    ctx.drawImage(bgImage, -A4_PIXEL_WIDTH / 2, -A4_PIXEL_SLOT_HEIGHT / 2, A4_PIXEL_WIDTH, A4_PIXEL_SLOT_HEIGHT);
+                    ctx.restore();
+                    
+                    // 2. 中间 (正向) 背景
+                    ctx.drawImage(bgImage, 0, A4_PIXEL_SLOT_HEIGHT, A4_PIXEL_WIDTH, A4_PIXEL_SLOT_HEIGHT);
+
+                    // 3. 中间 (正向) 文字
+                    const nameX_abs = settings.name.x;
+                    const nameY_abs = A4_PIXEL_SLOT_HEIGHT + settings.name.y;
+                    ctx.font = settings.name.font;
+                    ctx.fillStyle = settings.name.color;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(name, nameX_abs, nameY_abs);
+                    
+                    if (title) {
+                        const titleX_abs = settings.title.x;
+                        const titleY_abs = A4_PIXEL_SLOT_HEIGHT + settings.title.y;
+                        ctx.font = settings.title.font;
+                        ctx.fillStyle = settings.title.color;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(title, titleX_abs, titleY_abs);
+                    }
+
+                    // 4. 顶部 (镜像) 文字
+                    const mirroredNameX = A4_PIXEL_WIDTH - settings.name.x;
+                    const mirroredNameY = A4_PIXEL_SLOT_HEIGHT - settings.name.y;
+                    ctx.save();
+                    ctx.translate(mirroredNameX, mirroredNameY);
+                    ctx.rotate(Math.PI);
+                    ctx.font = settings.name.font;
+                    ctx.fillStyle = settings.name.color;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(name, 0, 0);
+                    ctx.restore();
+
+                    if (title) {
+                        const mirroredTitleX = A4_PIXEL_WIDTH - settings.title.x;
+                        const mirroredTitleY = A4_PIXEL_SLOT_HEIGHT - settings.title.y;
+                        ctx.save();
+                        ctx.translate(mirroredTitleX, mirroredTitleY);
+                        ctx.rotate(Math.PI);
+                        ctx.font = settings.title.font;
+                        ctx.fillStyle = settings.title.color;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(title, 0, 0);
+                        ctx.restore();
+                    }
+
+                } else {
+                    // === 单张模式 ===
+                    canvas.width = bgImage.width;
+                    canvas.height = bgImage.height;
+                    
+                    // 1. 绘制背景
+                    ctx.drawImage(bgImage, 0, 0);
+                    
+                    // 2. 绘制文字
+                    ctx.font = settings.name.font;
+                    ctx.fillStyle = settings.name.color;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(name, settings.name.x, settings.name.y);
+                    if (title) {
+                        ctx.font = settings.title.font;
+                        ctx.fillStyle = settings.title.color;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(title, settings.title.x, settings.title.y);
+                    }
+                }
+                
+                return canvas;
+            }
+
+            // "生成预览" 按钮点击事件
+            generateBtn.addEventListener('click', async () => {
+                if (!bgImage) {
+                    statusMsg.textContent = '请先上传背景图！';
+                    return;
+                }
+
+                const names = nameList.value.split('\n').filter(name => name.trim() !== '');
+                const titles = titleList.value.split('\n').filter(name => name.trim() !== '');
+                
+                if (names.length === 0) {
+                    statusMsg.textContent = '请至少输入一个名字！';
+                    return;
+                }
+                
+                if (titles.length > 0 && names.length !== titles.length) {
+                    statusMsg.textContent = `错误：姓名(${names.length}个)与职称(${titles.length}个)数量不匹配！`;
+                    return;
+                }
+
+                statusMsg.textContent = `正在生成 ${names.length} 个桌签...`;
+                generatedData = []; // 清空旧数据
+                previewContainer.innerHTML = ''; // 清空预览区
+                
+                const settings = getSettings();
+                
+                let canvases = [];
+                for (let i = 0; i < names.length; i++) {
+                    const name = names[i];
+                    const title = titles[i] || ""; // 如果职称列表短或为空，则使用空字符串
+                    const canvas = await generateCard(name, title, settings);
+                    
+                    generatedData.push({ name: name, title: title, canvas: canvas });
+
+                    // 仅在预览区显示前12个
+                    if (i < 12) {
+                        // V3.0: 创建带下载按钮的包装器
+                        const cardWrapper = document.createElement('div');
+                        cardWrapper.className = 'relative rounded-md shadow-md border overflow-hidden card-preview-wrapper';
+
+                        const img = document.createElement('img');
+                        // V5.0: 预览图使用 JPG 格式
+                        img.src = canvas.toDataURL(IMAGE_MIME_TYPE, 0.9); // 0.9为JPG质量
+                        img.className = 'w-full h-auto';
+                        
+                        const dlBtn = document.createElement('button');
+                        dlBtn.className = 'download-single-btn';
+                        dlBtn.innerHTML = '&#x2193;'; // 向下箭头
+                        // V5.0: 下载文件名后缀为 .jpg
+                        dlBtn.title = `下载 ${name}${IMAGE_EXTENSION}`; 
+                        
+                        // V3.0: 添加单独下载事件
+                        dlBtn.onclick = () => {
+                            // V5.0: 下载信息更新
+                            statusMsg.textContent = `正在下载 ${name}${IMAGE_EXTENSION}...`;
+                            // V4.0: 确保下载的是最终生成的canvas
+                            generateCard(name, title, getSettings()).then(finalCanvas => {
+                                // V5.0: toBlob 使用 image/jpeg 格式
+                                finalCanvas.toBlob(blob => {
+                                    // V5.0: 下载文件名后缀为 .jpg
+                                    triggerDownload(blob, `${i + 1}_${name}${IMAGE_EXTENSION}`);
+                                    statusMsg.textContent = `已下载 ${name}${IMAGE_EXTENSION}!`;
+                                }, IMAGE_MIME_TYPE, 0.9); // 0.9为JPG质量
+                            });
+                        };
+
+                        cardWrapper.appendChild(img);
+                        cardWrapper.appendChild(dlBtn);
+                        previewContainer.appendChild(cardWrapper);
+                    }
+                }
+                
+                if (previewPlaceholder) {
+                    previewPlaceholder.style.display = 'none';
+                }
+
+                statusMsg.textContent = `成功生成 ${generatedData.length} 个！现在可以下载了。`;
+                
+                // 启用下载按钮
+                downloadZipBtn.disabled = false;
+                downloadPdfBtn.disabled = false;
+                downloadZipBtn.classList.remove('btn-disabled');
+                downloadZipBtn.classList.add('btn-secondary');
+                downloadPdfBtn.classList.remove('btn-disabled');
+                downloadPdfBtn.classList.add('btn-secondary');
+            });
+
+            // === 5. 下载功能 ===
+
+            // 触发浏览器下载
+            function triggerDownload(blob, filename) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            // 下载ZIP
+            downloadZipBtn.addEventListener('click', async () => {
+                if (generatedData.length === 0) return;
+                // V5.0: 状态信息更新
+                statusMsg.textContent = '正在压缩JPG (ZIP)...'; 
+
+                const zip = new JSZip();
+                const settings = getSettings();
+
+                // 我们只关心 name 和 title 列表
+                const nameListFull = nameList.value.split('\n').filter(name => name.trim() !== '');
+                const titleListFull = titleList.value.split('\n');
+
+                const blobPromises = nameListFull.map((name, index) => {
+                    const title = titleListFull[index] || "";
+                    return generateCard(name, title, settings).then(canvas => {
+                        return new Promise(resolve => {
+                            // V5.0: toBlob 使用 image/jpeg 格式
+                            canvas.toBlob(blob => {
+                                resolve({ name: name, blob: blob });
+                            }, IMAGE_MIME_TYPE, 0.9); // 0.9为JPG质量
+                        });
+                    });
+                });
+
+                const items = await Promise.all(blobPromises);
+
+                items.forEach((item, index) => {
+                    // V5.0: 文件名后缀为 .jpg
+                    zip.file(`${index + 1}_${item.name}${IMAGE_EXTENSION}`, item.blob);
+                });
+
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                triggerDownload(zipBlob, 'Desk_Cards_JPG.zip');
+                // V5.0: 状态信息更新
+                statusMsg.textContent = 'ZIP 已下载!';
+            });
+
+            // 下载PDF (已更新，支持两种模式)
+            downloadPdfBtn.addEventListener('click', async () => {
+                if (generatedData.length === 0) return;
+                statusMsg.textContent = '正在批量生成PDF...';
+
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const settings = getSettings();
+
+                    // V5.0: PDF 内部添加图片类型改为 JPEG
+                    const imgType = 'JPEG';
+
+                    if (settings.mode === 'symmetric') {
+                        // === 模式2: A4三折 (纵向, 1页1个) ===
+                        const pdf = new jsPDF({ 
+                            unit: 'mm', 
+                            format: 'a4', 
+                            orientation: 'portrait' 
+                        });
+                        const pageWidthMM = 210;
+                        const pageHeightMM = 297;
+
+                        const nameListFull = nameList.value.split('\n').filter(name => name.trim() !== '');
+                        const titleListFull = titleList.value.split('\n');
+
+                        for (let i = 0; i < nameListFull.length; i++) {
+                            const name = nameListFull[i];
+                            const title = titleListFull[i] || "";
+                            statusMsg.textContent = `正在处理 ${i + 1} / ${nameListFull.length}...`;
+                            
+                            const canvas = await generateCard(name, title, settings);
+                            // V5.0: toDataURL 使用 image/jpeg 格式
+                            const dataURL = canvas.toDataURL(IMAGE_MIME_TYPE, 1.0); // PDF内使用最高质量
+                            
+                            if (i > 0) {
+                                pdf.addPage();
+                            }
+                            pdf.addImage(dataURL, imgType, 0, 0, pageWidthMM, pageHeightMM);
+                        }
+                        
+                        pdf.save('A4_Desk_Cards_Foldable.pdf');
+
+                    } else {
+                        // === 模式1: 单张 (1-up, 原始尺寸) ===
+                        statusMsg.textContent = '正在生成 1-up PDF (原始尺寸)...';
+                        
+                        const nameListFull = nameList.value.split('\n').filter(name => name.trim() !== '');
+                        const titleListFull = titleList.value.split('\n');
+                        
+                        if (nameListFull.length === 0) return;
+
+                        const firstCanvas = await generateCard(nameListFull[0], titleListFull[0] || "", settings);
+                        
+                        const dpi = 96;
+                        const cardWidthMM = (firstCanvas.width / dpi) * 25.4;
+                        const cardHeightMM = (firstCanvas.height / dpi) * 25.4;
+                        const orientation = cardWidthMM > cardHeightMM ? 'landscape' : 'portrait';
+
+                        // 使用自定义格式创建PDF
+                        const pdf = new jsPDF({ 
+                            unit: 'mm', 
+                            format: [cardWidthMM, cardHeightMM], 
+                            orientation: orientation 
+                        });
+                        
+                        // V5.0: toDataURL 使用 image/jpeg 格式
+                        pdf.addImage(firstCanvas.toDataURL(IMAGE_MIME_TYPE, 1.0), imgType, 0, 0, cardWidthMM, cardHeightMM);
+
+                        // 循环生成剩余的卡片
+                        for (let i = 1; i < nameListFull.length; i++) {
+                            const name = nameListFull[i];
+                            const title = titleListFull[i] || "";
+                            statusMsg.textContent = `正在处理 ${i + 1} / ${nameListFull.length}...`;
+
+                            const canvas = await generateCard(name, title, settings);
+                            
+                            pdf.addPage([cardWidthMM, cardHeightMM], orientation);
+                            // V5.0: toDataURL 使用 image/jpeg 格式
+                            pdf.addImage(canvas.toDataURL(IMAGE_MIME_TYPE, 1.0), imgType, 0, 0, cardWidthMM, cardHeightMM);
+                        }
+
+                        pdf.save('Desk_Cards_Single_Pages.pdf');
+                    }
+                    
+                    statusMsg.textContent = 'PDF 已下载!';
+                } catch (error) {
+                    console.error('PDF generation failed:', error);
+                    statusMsg.textContent = 'PDF 生成失败! (查看控制台)';
+                }
+            });
+
+
+            // === 新增功能1: 名单文件上传 (.xlsx/.csv) (V5.3 增加了清除逻辑) ===
+
+            listUpload.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) {
+                    clearListBtn.disabled = true;
+                    return;
+                }
+                clearListBtn.disabled = false; // V5.3: 启用清除按钮
+
+                statusMsg.textContent = `正在读取文件: ${file.name}...`;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = new Uint8Array(event.target.result);
+                        // 使用 XLSX 库读取 ArrayBuffer
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        
+                        // 将工作表转换为 JSON 数组
+                        // header: 1 表示返回二维数组 (例如 [[姓名, 职称], [张三, CEO], ...])
+                        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                        if (json.length === 0) {
+                            statusMsg.textContent = '文件内容为空！';
+                            return;
+                        }
+
+                        let names = [];
+                        let titles = [];
+
+                        // 假设：第一列是姓名 (Col A), 第二列是职称 (Col B)
+                        // 遍历数据行 (从第一行开始读取，如果第一行是标题，用户可以手动删除)
+                        json.forEach(row => {
+                            const name = (row[0] || '').toString().trim();
+                            const title = (row[1] || '').toString().trim();
+                            
+                            if (name) { // 姓名不为空才添加
+                                names.push(name);
+                                titles.push(title);
+                            }
+                        });
+
+                        nameList.value = names.join('\n');
+                        titleList.value = titles.join('\n');
+                        
+                        // 触发预览更新
+                        drawPreviewWithText();
+
+                        statusMsg.textContent = `成功从 ${file.name} 导入 ${names.length} 条名单！`;
+
+                    } catch (error) {
+                        console.error("文件解析错误:", error);
+                        statusMsg.textContent = '文件解析失败！请确保文件格式正确 (Excel/CSV，姓名在A列，职称在B列)。';
+                    }
+                };
+                // 读取文件内容为ArrayBuffer，供XLSX库使用
+                reader.readAsArrayBuffer(file);
+            });
+            
+            // V5.3: 清除名单文件
+            clearListBtn.addEventListener('click', () => {
+                listUpload.value = ''; // 清除文件输入框
+                nameList.value = ''; // 清空姓名列表
+                titleList.value = ''; // 清空职称列表
+                clearListBtn.disabled = true; // 禁用清除按钮
+
+                // 触发预览更新
+                drawPreviewWithText();
+                statusMsg.textContent = '名单文件和列表已清除。';
+            });
+
+
+            // === 新增功能2: 模式示意图 Modal (已更新名称) ===
+            
+            function openSchematicModal(mode) {
+                const isSingle = mode === 'single';
+                
+                modalTitle.textContent = isSingle ? '单张模式示意图' : 'A4三折模式示意图';
+                // 使用您上传的图片文件名
+                modalImage.src = isSingle ? 'jpg-1.jpg' : 'jpg-2.jpg';
+                modalCaption.textContent = isSingle 
+                    ? '此模式将卡片按原图尺寸生成，一张卡片占一页。图片示例: jpg-1.jpg' 
+                    : '此模式将您上传的“单半张”图片自动组装成A4三折页（顶部镜像，中部正向），可直接打印对折。图片示例: jpg-2.jpg';
+                
+                schematicModal.classList.remove('hidden');
+                schematicModal.style.display = 'flex';
+            }
+
+            // 按钮点击事件
+            schematicSingleBtn.addEventListener('click', () => openSchematicModal('single'));
+            schematicSymmetricBtn.addEventListener('click', () => openSchematicModal('symmetric'));
+
+            // 关闭 Modal 事件
+            closeModalBtn.addEventListener('click', () => {
+                schematicModal.classList.add('hidden');
+                schematicModal.style.display = 'none';
+            });
+            schematicModal.addEventListener('click', (e) => {
+                // 点击背景关闭
+                if (e.target === schematicModal) {
+                    schematicModal.classList.add('hidden');
+                    schematicModal.style.display = 'none';
+                }
+            });
+
+            // 页面初始化时调用一次，确保显示引导信息
+            drawPreviewWithText();
+
+        }); // End of DOMContentLoaded
+    </script>
+</body>
+</html>
