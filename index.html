@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>桌签制作工具 (辉呀辉 V3.0)</title>
+    <title>桌签在线 (自由蓝 V3.0)</title>
     <!-- 引入Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 引入 jsPDF (用于生成PDF) 和 JSZip (用于生成ZIP) -->
@@ -38,7 +38,7 @@
         #bg-preview-canvas {
             cursor: crosshair;
         }
-        /* V5.3: 模式选择时高亮/改变颜色 (已加强样式) */
+        /* V5.3: 模式选择时改变颜色 (已加强样式) */
         input[type="radio"]:checked + label {
             @apply bg-blue-100 border-blue-600 ring-2 ring-blue-600 shadow-lg;
         }
@@ -80,39 +80,140 @@
             z-index: 50;
         }
         
-        /* 广告位样式 */
-        .ad-slot {
-            @apply block p-4 rounded-lg shadow-md transition-all duration-300 transform hover:scale-[1.01] hover:shadow-xl;
-        }
-    </style>
+      <head>
+  <style>
+    /* 顶部并排广告容器：Flex布局实现并排 */
+    .ad-top-row {
+      width: 100%;
+      margin: 30px 0; /* 上下间距，可调整 */
+      padding: 0 50px; /* 左右留白，避免贴边 */
+      box-sizing: border-box;
+      display: flex; /* 开启Flex并排 */
+      justify-content: center; /* 整体居中 */
+      align-items: center; /* 垂直对齐 */
+      gap: 50px; /* 广告之间的间距，可调整 */
+      flex-wrap: wrap; /* 屏幕变小时自动换行，避免拥挤 */
+    }
+
+    /* 单个广告项：控制尺寸（稍微小一些） */
+    .ad-item {
+      flex: 0 0 350px; /* 固定宽度350px，不伸缩（核心尺寸控制） */
+    }
+
+    /* 广告图片样式：保持比例，避免变形 */
+    .ad-img {
+      width: 100%; /* 占满广告项宽度 */
+      height: 150px; /* 固定高度，让3个广告统一大小（可调整） */
+      object-fit: cover; /* 图片按比例裁剪，不拉伸 */
+      border: none;
+      border-radius: 6px; /* 可选：圆角增加美观度 */
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 可选：轻微阴影，更立体 */
+    }
+
+    /* 响应式适配：移动端优化 */
+    @media (max-width: 900px) {
+      /* 屏幕小于900px时，每个广告占满宽度的1/2（2个一排） */
+      .ad-item {
+        flex: 0 0 calc(50% - 10px);
+      }
+    }
+
+    @media (max-width: 600px) {
+      /* 屏幕小于600px时，垂直排列（1个一排） */
+      .ad-item {
+        flex: 0 0 100%; /* 占满宽度 */
+      }
+      .ad-img {
+        height: auto; /* 移动端高度自动，避免拉伸 */
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <head>
+  <style>
+    /* 顶部并排广告容器：Flex布局实现并排 */
+    .ad-top-row {
+      width: 100%;
+      margin: 20px 0; /* 上下间距，可调整 */
+      padding: 0 50px; /* 左右留白，避免贴边 */
+      box-sizing: border-box;
+      display: flex; /* 开启Flex并排 */
+      justify-content: center; /* 整体居中 */
+      align-items: center; /* 垂直对齐 */
+      gap: 50px; /* 广告之间的间距，可调整 */
+      flex-wrap: wrap; /* 屏幕变小时自动换行，避免拥挤 */
+    }
+
+    /* 单个广告项：控制尺寸（稍微小一些） */
+    .ad-item {
+      flex: 0 0 380px; /* 固定宽度380px，不伸缩（核心尺寸控制） */
+    }
+
+    /* 广告图片样式：保持比例，避免变形 */
+    .ad-img {
+      width: 100%; /* 占满广告项宽度 */
+      height: 180px; /* 固定高度，让3个广告统一大小（可调整） */
+      object-fit: cover; /* 图片按比例裁剪，不拉伸 */
+      border: none;
+      border-radius: 6px; /* 可选：圆角增加美观度 */
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 可选：轻微阴影，更立体 */
+    }
+
+    /* 响应式适配：移动端优化 */
+    @media (max-width: 900px) {
+      /* 屏幕小于900px时，每个广告占满宽度的1/2（2个一排） */
+      .ad-item {
+        flex: 0 0 calc(50% - 10px);
+      }
+    }
+
+    @media (max-width: 600px) {
+      /* 屏幕小于600px时，垂直排列（1个一排） */
+      .ad-item {
+        flex: 0 0 100%; /* 占满宽度 */
+      }
+      .ad-img {
+        height: auto; /* 移动端高度自动，避免拉伸 */
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 顶部并排广告区（3个广告） -->
+  <div class="ad-top-row">
+    <!-- 广告1 -->
+    <div class="ad-item">
+      <a href="https://zenghui.mysxl.cn/" target="_blank" rel="noopener noreferrer">
+        <img src="https://youke1.picui.cn/s1/2025/11/22/692183cb1bf55.jpg" alt="左侧广告位" class="ad-img">
+      </a>
+    </div>
+    <!-- 广告2 -->
+    <div class="ad-item">
+      <a href="https://zenghui.mysxl.cn/" target="_blank" rel="noopener noreferrer">
+        <img src="https://youke1.picui.cn/s1/2025/11/22/692184ba6397d.jpg" alt="中间广告位" class="ad-img">
+      </a>
+    </div>
+    <!-- 广告3 -->
+    <div class="ad-item">
+      <a href="https://zenghui.mysxl.cn/" target="_blank" rel="noopener noreferrer">
+        <img src="https://youke1.picui.cn/s1/2025/11/22/692183ce23617.jpg" alt="右侧广告位" class="ad-img">
+      </a>
+    </div>
+  </div>
+</body>
+  
+</body>
 </head>
 <body class="bg-gray-100 p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow-2xl">
-        
-        <!-- ====== 广告位区域 (新增) ====== -->
-        <div class="mb-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <!-- 广告位 1: 使用 a 标签实现可点击跳转 -->
-                <!-- target="_blank" 确保在新标签页打开 -->
-                <a href="https://www.google.com/search?q=赞助商链接" target="_blank" class="ad-slot bg-gradient-to-r from-blue-500 to-blue-600 text-white flex items-center justify-center font-bold text-center h-20">
-                    <span class="text-base sm:text-lg">广告位 A：还没想好放啥</span>
-                </a>
-                <!-- 广告位 2 -->
-                <a href="https://www.google.com/search?q=限时优惠" target="_blank" class="ad-slot bg-gradient-to-r from-green-500 to-green-600 text-white flex items-center justify-center font-bold text-center h-20">
-                    <span class="text-base sm:text-lg">广告位 B：还没想好放啥</span>
-                </a>
-                <!-- 广告位 3 -->
-                <a href="https://www.google.com/search?q=新功能预告" target="_blank" class="ad-slot bg-gradient-to-r from-yellow-500 to-yellow-600 text-white flex items-center justify-center font-bold text-center h-20">
-                    <span class="text-base sm:text-lg">广告位 C：新功能预告</span>
-                </a>
-            </div>
-        </div>
-        <!-- ================================== -->
 
         <header class="border-b-2 border-gray-200 pb-4 mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">桌签制作工具 (辉呀辉 V3.0)</h1>
-            <p class="text-gray-600 mt-2">*注：如遇使用困难或有其他新的想法可以联系微信：withzhzhzh</p>
+            <h1 class="text-3xl font-bold text-gray-800">桌签在线 (自由蓝 V3.0)</h1>
+            <p class="text-gray-600 mt-2">版权©自由蓝设计工作室   微信：withzhzhzh</p>
         </header>
 
         <div class="grid grid-cols-1 lg:col-cols-3 gap-8">
@@ -150,7 +251,7 @@
                             <!-- V5.3: Label自带高亮逻辑 -->
                             <label for="mode-single" class="flex flex-col p-4 border rounded-lg cursor-pointer transition-all hover:bg-gray-50 w-full mr-2">
                                 <span class="font-semibold text-gray-800">单张模式</span>
-                                <span class="text-sm text-gray-500 mt-1">按原图尺寸生成 (单张席卡或椅背贴)。</span>
+                                <span class="text-sm text-gray-500 mt-1">单张模式下程序将按照原图尺寸生成 (单张席卡/椅背贴/圆形臂贴)。</span>
                             </label>
                             <button id="schematic-single-btn" class="flex-shrink-0 btn bg-gray-500 hover:bg-gray-600 w-10 h-10 p-0 text-lg" title="查看单张模式示意图">
                                 i
@@ -161,7 +262,7 @@
                             <!-- V5.3: Label自带高亮逻辑 -->
                             <label for="mode-symmetric" class="flex flex-col p-4 border rounded-lg cursor-pointer transition-all hover:bg-gray-50 w-full mr-2">
                                 <span class="font-semibold text-gray-800">A4三折模式</span>
-                                <span class="text-sm text-gray-500 mt-1">只需要上传 "单半张" 背景组合成A4页面（尺寸为21cmWX9.9cmH）。</span>
+                                <span class="text-sm text-gray-500 mt-1">只需上传尺寸为21cmWX9.9cmH的画面系统将自动合成A4页面</span>
                             </label>
                             <button id="schematic-symmetric-btn" class="flex-shrink-0 btn bg-gray-500 hover:bg-gray-600 w-10 h-10 p-0 text-lg" title="查看A4三折模式示意图">
                                 i
@@ -210,7 +311,7 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label for="font-size" class="text-sm font-medium">字号 (px)</label>
-                            <input type="number" id="font-size" value="300" class="w-full mt-1 p-2 border border-gray-300 rounded-lg">
+                            <input type="number" id="font-size" value="380" class="w-full mt-1 p-2 border border-gray-300 rounded-lg">
                         </div>
                         <div>
                             <label for="font-color" class="text-sm font-medium">颜色</label>
@@ -226,8 +327,8 @@
                         </div>
                     </div>
                     <div class="mt-4">
-                        <label for="font-family" class="text-sm font-medium">字体（可自行输入字体名称）</label>
-                        <input type="text" id="font-family" value="SimHei, 'Microsoft YaHei', sans-serif" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" placeholder="例如: SimHei, sans-serif">
+                        <label for="font-family" class="text-sm font-bold">字体（可自行输入字体名称）</label>
+                        <input type="text" id="font-family" value="阿里妈妈数黑体" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" placeholder="例如: SimHei, sans-serif">
                     </div>
                 </div>
 
@@ -237,8 +338,8 @@
                     <p class="text-sm text-gray-500 mb-3">坐标基于您上传的 "单半张" 卡片。</p>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label for="title-font-size" class="text-sm font-medium">字号（如无需职场可设置为0） (px)</label>
-                            <input type="number" id="title-font-size" value="80" class="w-full mt-1 p-2 border border-gray-300 rounded-lg">
+                            <label for="title-font-size" class="text-sm font-medium">字号（如无需职称可设置为0） (px)</label>
+                            <input type="number" id="title-font-size" value="120" class="w-full mt-1 p-2 border border-gray-300 rounded-lg">
                         </div>
                         <div>
                             <label for="title-font-color" class="text-sm font-medium">颜色</label>
@@ -254,7 +355,7 @@
                         </div>
                     </div>
                     <div class="mt-4">
-                        <label for="title-font-family" class="text-sm font-medium">字体</label>
+                        <label for="title-font-family" class="text-sm font-medium">字体（可自行输入字体名称）</label>
                         <input type="text" id="title-font-family" value="SimHei, 'Microsoft YaHei', sans-serif" class="w-full mt-1 p-2 border border-gray-300 rounded-lg" placeholder="例如: SimHei, sans-serif">
                     </div>
                 </div>
